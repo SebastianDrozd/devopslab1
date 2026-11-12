@@ -1,39 +1,34 @@
 
-name: DevOps Home Lab CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-permissions:
-  contents: read
-
-jobs:
-  build:
-    name: Validate and Build Application
+  publish:
+    name: Publish Docker Image to GHCR
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
-          node-version: '24'
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Validate JavaScript syntax
-        run: node --check files/maintenance-api/app/index.js
+      - name: Build and publish Docker image
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
 
-      - name: Run unit tests
-        run: node --test files/maintenance-api/app/health.test.js
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            -t "${IMAGE}:latest" \
+            -t "${IMAGE}:${GITHUB_SHA}" \
+            files/maintenance-api/app
 
-      - name: Validate Docker Compose
-        env:
-          POSTGRES_PASSWORD: ci-placeholder-not-a-secret
-        run: docker compose -f files/maintenance-api/compose.yaml config --quiet
-
-      - name: Build Docker image
-        run: docker build -t maintenance-api:ci files/maintenance-api/app
+          docker push "${IMAGE}:latest"
+          docker push "${IMAGE}:${GITHUB_SHA}"
