@@ -1,4 +1,43 @@
 
+name: DevOps Home Lab CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Validate and Build Application
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Validate JavaScript syntax
+        run: node --check files/maintenance-api/app/index.js
+
+      - name: Run unit tests
+        run: node --test files/maintenance-api/app/health.test.js
+
+      - name: Validate Docker Compose
+        env:
+          POSTGRES_PASSWORD: ci-placeholder-not-a-secret
+        run: docker compose -f files/maintenance-api/compose.yaml config --quiet
+
+      - name: Build Docker image
+        run: docker build -t maintenance-api:ci files/maintenance-api/app
+
   publish:
     name: Publish Docker Image to GHCR
     needs: build
