@@ -1,0 +1,52 @@
+
+---
+- name: Deploy Maintenance API
+  hosts: docker
+  become: true
+
+  vars:
+    app_dir: /home/srankoin/devops-lab/maintenance-api
+
+  tasks:
+    - name: Create application directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: srankoin
+        group: srankoin
+        mode: '0755'
+      loop:
+        - "{{ app_dir }}"
+        - "{{ app_dir }}/app"
+
+    - name: Copy application files
+      ansible.builtin.copy:
+        src: "files/maintenance-api/{{ item }}"
+        dest: "{{ app_dir }}/{{ item }}"
+        owner: srankoin
+        group: srankoin
+        mode: '0644'
+      loop:
+        - compose.yaml
+        - app/Dockerfile
+        - app/package.json
+        - app/index.js
+
+    - name: Check existing environment file
+      ansible.builtin.stat:
+        path: "{{ app_dir }}/.env"
+      register: env_file
+
+    - name: Require database credentials
+      ansible.builtin.assert:
+        that:
+          - env_file.stat.exists
+        fail_msg: "The existing .env file is missing!"
+
+    - name: Deploy application with Docker Compose
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}"
+        state: present
+        build: always
+
+
