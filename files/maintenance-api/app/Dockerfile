@@ -7,7 +7,7 @@ COPY package.json ./
 
 RUN npm install --omit=dev
 
-COPY index.js ./
+COPY index.js health.js ./
 
 USER node
 

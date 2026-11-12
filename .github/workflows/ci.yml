@@ -27,6 +27,9 @@ jobs:
       - name: Validate JavaScript syntax
         run: node --check files/maintenance-api/app/index.js
 
+      - name: Run unit tests
+        run: node --test files/maintenance-api/app/health.test.js
+
       - name: Validate Docker Compose
         env:
           POSTGRES_PASSWORD: ci-placeholder-not-a-secret
